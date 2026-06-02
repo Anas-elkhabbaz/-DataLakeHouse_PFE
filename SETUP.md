@@ -76,8 +76,8 @@ data/
 ## 2. Clone & Configure
 
 ```bash
-git clone https://github.com/Anas-elkhabbaz/DataLakeHouse_PFE.git
-cd DataLakeHouse_PFE
+git clone https://github.com/Anas-elkhabbaz/-DataLakeHouse_PFE.git
+cd -DataLakeHouse_PFE
 ```
 
 Copy and fill in the environment file:

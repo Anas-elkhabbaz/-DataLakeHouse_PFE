@@ -3,7 +3,7 @@
 **Projet de Fin d'Études (PFE)** — Filière Big Data & IA, UIR Rabat  
 **Étudiant :** Anas Elkhabbaz | **Encadrant entreprise :** SQLI Rabat  
 **Soutenance :** 24 juin 2026  
-**Dépôt :** https://github.com/Anas-elkhabbaz/DataLakeHouse_PFE
+**Dépôt :** https://github.com/Anas-elkhabbaz/-DataLakeHouse_PFE
 
 ---
 
@@ -83,8 +83,8 @@ dont l'apostrophe génère un warning SQL dans les tests `accepted_values`).
 La façon la plus simple de lancer les applications :
 
 ```bash
-git clone https://github.com/Anas-elkhabbaz/DataLakeHouse_PFE.git
-cd DataLakeHouse_PFE
+git clone https://github.com/Anas-elkhabbaz/-DataLakeHouse_PFE.git
+cd -DataLakeHouse_PFE
 
 # Configurer les identifiants Snowflake
 cp .env.example .env
@@ -106,8 +106,8 @@ en quelques secondes grâce au cache Docker.
 ## Installation manuelle
 
 ```bash
-git clone https://github.com/Anas-elkhabbaz/DataLakeHouse_PFE.git
-cd DataLakeHouse_PFE
+git clone https://github.com/Anas-elkhabbaz/-DataLakeHouse_PFE.git
+cd -DataLakeHouse_PFE
 
 # Installer les dépendances de l'app d'inférence
 pip install -r apps/inference/requirements.txt
