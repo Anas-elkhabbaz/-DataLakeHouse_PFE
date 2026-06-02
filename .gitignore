@@ -1,0 +1,30 @@
+# Secrets
+.env
+
+# dbt
+dbt_project/target/
+dbt_project/logs/
+dbt_project/dbt_packages/
+profiles.yml
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data (raw CSVs stay local — ~8 GB, not versionned)
+data/
+
+# Generated results (reproducible — not needed in git)
+results/mart_predictions.csv
+results/confusion_matrix_*.csv
+results/evaluation_report.txt
+results/dbt_test_results.txt

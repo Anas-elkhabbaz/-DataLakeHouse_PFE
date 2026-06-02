@@ -1,0 +1,12 @@
+name: sf_env
+channels:
+  - snowflake
+dependencies:
+  - joblib
+  - scikit-learn
+  - numpy
+  - pandas
+  - scipy
+  - pytorch
+  - transformers
+  - sentencepiece

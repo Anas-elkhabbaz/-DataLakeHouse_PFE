@@ -1,0 +1,40 @@
+{
+  "resolution_classes": [
+    "Cannot Reproduce",
+    "Duplicate",
+    "Fixed",
+    "Incomplete",
+    "Invalid",
+    "Not A Problem",
+    "Won't Fix"
+  ],
+  "issuetype_classes": [
+    "Bug",
+    "Improvement",
+    "New Feature",
+    "Other",
+    "Sub-task"
+  ],
+  "tabular_features": [
+    "n_total_changes",
+    "n_status_changes",
+    "n_priority_changes",
+    "n_assignee_changes",
+    "n_resolution_changes",
+    "was_escalated",
+    "n_people_involved",
+    "n_links_total",
+    "n_duplicates",
+    "n_blocks",
+    "n_blocked_by",
+    "n_relates",
+    "n_comments",
+    "n_commenters",
+    "resolution_days",
+    "summary_length",
+    "description_length",
+    "n_container",
+    "has_parent"
+  ],
+  "embedding_dim": 768
+}
