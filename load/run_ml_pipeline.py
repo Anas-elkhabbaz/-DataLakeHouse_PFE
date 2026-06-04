@@ -2,7 +2,7 @@
 V7 Hybrid RCA — Pipeline amélioré (LogisticRegression + features mixtes)
 Steps:
   1. Fetch mart_ml depuis Snowflake (texte + features tabulaires)
-  2. Embed text_noco avec sentence-transformers (all-MiniLM-L6-v2)
+  2. Embed text_noco avec sentence-transformers (all-mpnet-base-v2)
   3. Combiner embeddings + features tabulaires normalisées
   4. Entraîner LogisticRegression avec class_weight='balanced'
   5. Évaluer (accuracy, macro-F1, confusion matrix)

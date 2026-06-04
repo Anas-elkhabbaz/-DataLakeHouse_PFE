@@ -246,7 +246,7 @@ with st.sidebar:
   - 73.6% macro-F1
   - 79.6% accuracy
 - LogisticRegression (resolution)
-  - 80% accuracy
+  - 91.52% accuracy
 
 **Pipeline :**
 - 42 083 tickets Apache Spark
