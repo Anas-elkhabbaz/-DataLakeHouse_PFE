@@ -128,7 +128,7 @@ Le fallback Python KNN (`all-MiniLM-L6-v2`, k=15) a été implémenté en premie
 | Cible | Modèle | Justification |
 |-------|--------|---------------|
 | issuetype | `microsoft/deberta-v3-base` fine-tuné (5 epochs, Kaggle Tesla T4) | DeBERTa > KNN : +40pt macro-F1 grâce à la compréhension contextuelle et au signal has_parent |
-| résolution | KNN cosinus `all-MiniLM-L6-v2` (k=15) + boost métadonnées | 91,5% accuracy maintenu, pas de régression |
+| résolution | `LogisticRegression` + `all-mpnet-base-v2` (768d) + 19 features tabulaires | 91,5% accuracy maintenu, pas de régression |
 | Analyse textuelle | `claude-haiku-4-5` Anthropic API (optionnel) ou template | Génère l'explication actionnable pour l'ingénieur |
 
 **Chemin de fine-tuning :**

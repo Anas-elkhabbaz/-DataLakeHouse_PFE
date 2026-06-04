@@ -31,7 +31,7 @@ Deux chemins de consommation sont exposés :
 |----------|--------|--------|-------------|
 | Accuracy issuetype (4 classes) | DeBERTa-v3-base fine-tuné | **79,6 %** | > 70 % |
 | Macro-F1 issuetype (4 classes) | DeBERTa-v3-base fine-tuné | **73,63 %** | — |
-| Accuracy résolution | KNN cosinus (all-MiniLM-L6-v2) | 91,52 % | > 75 % |
+| Accuracy résolution | LogisticRegression (all-mpnet-base-v2 + features tabulaires) | 91,52 % | > 75 % |
 
 Résultats par classe issuetype (jeu de validation, 3 809 tickets) :
 
@@ -177,7 +177,7 @@ cd dbt_project
 python load/run_ml_pipeline.py
 ```
 
-Lance le pipeline d'inférence (DeBERTa v3 fine-tuné pour issuetype + KNN pour résolution),
+Lance le pipeline d'inférence (DeBERTa v3 fine-tuné pour issuetype + LogisticRegression pour résolution),
 fait les prédictions sur les 3 809 tickets de validation, évalue les performances et sauvegarde
 les résultats dans `results/` et dans `CORTEX.MART_PREDICTIONS` sur Snowflake.
 
@@ -242,7 +242,7 @@ DataLakeHouse_PFE/
 ├── apps/
 │   ├── inference/               # Application de triage (Streamlit)
 │   │   ├── Dockerfile
-│   │   ├── inference_app.py     # UI professionnelle + KNN temps réel
+│   │   ├── inference_app.py     # UI professionnelle + inférence temps réel
 │   │   └── requirements.txt
 │   └── analytics/               # Tableau de bord 5 pages (Streamlit)
 │       ├── Dockerfile

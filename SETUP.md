@@ -272,7 +272,7 @@ python load/run_ml_pipeline.py
 
 - Loads `MARTS_ML.MART_ML` from Snowflake
 - Fine-tuned DeBERTa v3 → predicts `issuetype` on 3 809 validation tickets
-- Sentence-transformers KNN → predicts `resolution`
+- LogisticRegression (all-mpnet-base-v2 embeddings + tabular features) → predicts `resolution`
 - Evaluates and saves metrics to `results/`
 - Uploads predictions → `PREDICTIONS.MART_PREDICTIONS`
 
@@ -284,7 +284,7 @@ Expected metrics:
 |-------|--------|-------|
 | DeBERTa v3 (issuetype) | Accuracy | 79.6% |
 | DeBERTa v3 (issuetype) | Macro-F1 | 73.63% |
-| KNN resolution | Accuracy | 91.52% |
+| LogisticRegression resolution | Accuracy | 91.52% |
 
 ---
 
@@ -313,7 +313,7 @@ python deploy_notebooks.py
 
 Uploads and creates two notebooks in Snowflake:
 - `deberta_fine_tuning_v3` — DeBERTa v3 training notebook
-- `sklearn_resolution_training` — sklearn KNN resolution model
+- `sklearn_resolution_training` — sklearn LogisticRegression resolution model
 
 Access in Snowsight: **Projects → Notebooks**
 

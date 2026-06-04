@@ -124,7 +124,7 @@ Résultats de l'évaluation du pipeline sur le jeu de validation.
 | `key` | VARCHAR | Clé du ticket de validation (SPARK-NNNNN). |
 | `true_issuetype` | VARCHAR | Label réel issuetype (ground truth). |
 | `true_resolution` | VARCHAR | Label réel résolution (ground truth). |
-| `pred_issuetype` | VARCHAR | Issuetype prédit par le pipeline KNN. |
+| `pred_issuetype` | VARCHAR | Issuetype prédit par DeBERTa v3. |
 | `pred_resolution` | VARCHAR | Résolution prédite. |
 | `conf_issuetype` | FLOAT | Confiance du vote pondéré pour issuetype (0–1). |
 | `conf_resolution` | FLOAT | Confiance du vote pondéré pour résolution (0–1). |
@@ -136,7 +136,7 @@ Résultats de l'évaluation du pipeline sur le jeu de validation.
 | Cible | Modèle | Accuracy | Macro-F1 |
 |-------|--------|----------|----------|
 | issuetype (4 classes) | DeBERTa-v3-base fine-tuné | **79,6 %** | **73,63 %** |
-| résolution (7 classes) | KNN cosinus (all-MiniLM-L6-v2) | **91,52 %** | 16,40 % |
+| résolution (7 classes) | LogisticRegression (all-mpnet-base-v2) | **91,52 %** | 16,40 % |
 
 Détail issuetype par classe :
 

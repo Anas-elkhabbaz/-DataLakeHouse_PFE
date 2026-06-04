@@ -55,9 +55,9 @@ Fichiers CSV source (Kaggle, mars 2025)
         │              │  2. Issuetype : DeBERTa-v3-base fine-tuné   │
         │              │     text_for_it + [HAS-PARENT] (512 tokens)  │
         │              │     → 4 classes (Bug/Impr./Sub-task/Other)   │
-        │              │  3. Résolution : Cosine KNN (k=15)           │
-        │              │     text_noco → all-MiniLM-L6-v2 (384d)      │
-        │              │     + boost priorité/statut/reporter          │
+        │              │  3. Résolution : LogisticRegression           │
+        │              │     text_noco → all-mpnet-base-v2 (768d)      │
+        │              │     + 19 features tabulaires (balanced)        │
         │              │  4. Confiance + analyse textuelle             │
         │              │  5. Évaluation + export résultats            │
         │              │  6. Upload → CORTEX.MART_PREDICTIONS (3 809) │
@@ -65,7 +65,7 @@ Fichiers CSV source (Kaggle, mars 2025)
         ▼              ▼                                              │
 ┌─────────────────┐  ┌──────────────────────────────────────────┐   │
 │  analytics_app  │  │  inference_app                            │   │
-│  5 pages        │  │  KNN temps réel sur 1 ticket             │   │
+│  5 pages        │  │  Inférence temps réel sur 1 ticket       │   │
 │  plotly.express │  │  → issuetype + résolution + analyse      │   │
 │  port 8502      │  │  → optionnel : LLM via Anthropic API     │   │
 └─────────────────┘  │  port 8501                               │   │
@@ -216,28 +216,27 @@ Sub-task, 0% pour Bug/Improvement/Other).
 | Other | 1,99 |
 | Sub-task | 1,31 |
 
-### Modèle résolution — KNN cosinus (maintenu)
+### Modèle résolution — LogisticRegression (all-mpnet-base-v2 + features tabulaires)
 
 | Propriété | Valeur |
 |-----------|--------|
-| Modèle | `all-MiniLM-L6-v2` (sentence-transformers) |
-| Dimensions | 384 |
-| Encodage | L2-normalisé → similarité cosinus = produit scalaire |
-| Cache | `results/embeddings_cache.npz` (57 MB, versionné dans git) |
+| Modèle | `LogisticRegression(class_weight='balanced')` (scikit-learn) |
+| Embeddings | `all-mpnet-base-v2` (sentence-transformers, 768d) |
+| Features tabulaires | 19 features : changelog, issuelinks, comments, has_parent, etc. |
+| Cache embeddings | `results/embeddings_cache.npz` (versionné via Git LFS) |
 
 Algorithme :
-1. Embed le ticket d'entrée (text_noco, LEFT 2000 chars)
-2. Produit scalaire contre les 38 274 embeddings d'entraînement
-3. Boost de métadonnées : +0,10 si même priorité, +0,08 si même statut, +0,05 si même reporter
-4. Garder les 15 plus proches voisins (k=15)
-5. Vote pondéré par score de similarité → résolution prédite + confiance
+1. Embed text_noco avec all-mpnet-base-v2 (768 dimensions)
+2. Concaténer embeddings + 19 features tabulaires
+3. LogisticRegression entraîné sur 38 274 tickets (class_weight='balanced')
+4. Predict_proba → résolution prédite + scores de confiance par classe
 
 ### Résultats sur le jeu de validation (3 809 tickets)
 
 | Cible | Modèle | Accuracy | Macro-F1 |
 |-------|--------|----------|----------|
 | issuetype (4 classes) | DeBERTa-v3-base fine-tuné | **79,6 %** | **73,63 %** |
-| résolution (7 classes) | KNN cosinus (all-MiniLM-L6-v2) | 91,52 % | 16,40 % |
+| résolution (7 classes) | LogisticRegression (all-mpnet-base-v2) | 91,52 % | 16,40 % |
 
 F1 par classe (issuetype) :
 
@@ -281,7 +280,7 @@ docker-compose up --build
 | spark-inference | 8501 | python:3.12-slim | ~1,1 GB |
 | spark-analytics | 8502 | python:3.12-slim | ~400 MB |
 
-L'image d'inférence pré-charge le modèle `all-MiniLM-L6-v2` et copie
+L'image d'inférence pré-charge le modèle `all-mpnet-base-v2` et copie
 `results/embeddings_cache.npz` — le démarrage du container est instantané.
 
 ---
