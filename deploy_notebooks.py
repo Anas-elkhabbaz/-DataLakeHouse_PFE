@@ -14,8 +14,7 @@ load_dotenv()
 from snowflake.snowpark import Session
 
 ROOT         = Path(__file__).parent
-KAGGLE_NB    = ROOT / "notebook6d3e788d00 (1).ipynb"
-SKLEARN_PY   = ROOT / "snowflake_notebook_content.py"
+KAGGLE_NB    = ROOT / "results" / "notebooks" / "deberta_fine_tuning_v3.ipynb"
 NB_OUT_DIR   = ROOT / "results" / "notebooks"
 NB_OUT_DIR.mkdir(parents=True, exist_ok=True)
 
