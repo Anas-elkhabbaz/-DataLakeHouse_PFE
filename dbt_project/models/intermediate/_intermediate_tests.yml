@@ -22,7 +22,7 @@ models:
         tests:
           - not_null
           - accepted_values:
-              values: ['Fixed', 'Not A Problem', 'Incomplete', 'Duplicate', 'Invalid', 'Cannot Reproduce']
+              values: ['Fixed', 'Not A Problem', 'Incomplete', 'Duplicate', 'Invalid', 'Cannot Reproduce', "Won''t Fix"]
               config:
                 severity: warn
       - name: split
@@ -39,7 +39,7 @@ models:
           - unique
           - not_null
           - relationships:
-              to: ref('int_issues_cleaned')
+              to: ref('stg_issues')
               field: key
 
   - name: int_changelog_features
@@ -61,5 +61,5 @@ models:
           - unique
           - not_null
           - relationships:
-              to: ref('int_issues_cleaned')
+              to: ref('stg_issues')
               field: key

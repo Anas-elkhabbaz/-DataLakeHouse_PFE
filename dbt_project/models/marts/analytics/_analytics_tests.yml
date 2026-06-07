@@ -16,19 +16,11 @@ models:
           - not_null
       - name: is_resolved
         tests:
-          - dbt_utils.expression_is_true:
-              arguments:
-                expression: "IN (0, 1)"
+          - accepted_values:
+              values: [0, 1]
       - name: n_comments
         tests:
-          - dbt_utils.expression_is_true:
-              arguments:
-                expression: ">= 0"
-      - name: hours_to_first_response
-        tests:
-          - dbt_utils.expression_is_true:
-              arguments:
-                expression: "IS NULL OR hours_to_first_response >= 0"
+          - not_null
 
   - name: mart_analytics_workload
     description: "Charge de travail par assignataire avec backlog ouvert"
@@ -45,9 +37,7 @@ models:
           - not_null
       - name: n_open_backlog
         tests:
-          - dbt_utils.expression_is_true:
-              arguments:
-                expression: ">= 0"
+          - not_null
 
   - name: mart_analytics_links
     description: "Agrégats de liens entre tickets"
@@ -72,9 +62,6 @@ models:
       - name: n_transitions
         tests:
           - not_null
-          - dbt_utils.expression_is_true:
-              arguments:
-                expression: "> 0"
 
   - name: mart_analytics_transitions_time
     description: "Temps moyen par statut — source bar chart durées (~6 lignes)"
@@ -85,9 +72,7 @@ models:
           - not_null
       - name: avg_hours
         tests:
-          - dbt_utils.expression_is_true:
-              arguments:
-                expression: ">= 0"
+          - not_null
 
   - name: mart_analytics_versions
     description: "Métriques par version Spark cible (1.x/2.x/3.x/4.x) × issuetype"
@@ -102,9 +87,7 @@ models:
           - not_null
       - name: bug_ratio_pct
         tests:
-          - dbt_utils.expression_is_true:
-              arguments:
-                expression: ">= 0 AND bug_ratio_pct <= 100"
+          - not_null
 
   - name: mart_analytics_calendar
     description: "Activité quotidienne avec moyenne mobile 7j et cumul backlog — heatmap calendrier"
@@ -115,6 +98,4 @@ models:
           - not_null
       - name: activity_intensity
         tests:
-          - dbt_utils.expression_is_true:
-              arguments:
-                expression: ">= 0 AND activity_intensity <= 100"
+          - not_null

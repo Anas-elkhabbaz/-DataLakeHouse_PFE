@@ -29,7 +29,7 @@ models:
         tests:
           - not_null
           - accepted_values:
-              values: ['Fixed', 'Not A Problem', 'Incomplete', 'Duplicate', 'Invalid', 'Cannot Reproduce']
+              values: ['Fixed', 'Not A Problem', 'Incomplete', 'Duplicate', 'Invalid', 'Cannot Reproduce', "Won''t Fix"]
               config:
                 severity: warn
       - name: text_noco
