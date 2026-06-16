@@ -15,7 +15,7 @@ Complete step-by-step guide to go from a fresh clone to a fully running project 
 5. [dbt Transformations (Silver + Gold)](#5-dbt-transformations-silver--gold)
 6. [ML Pipeline](#6-ml-pipeline)
 7. [Deploy to Snowflake](#7-deploy-to-snowflake)
-8. [Run Applications Locally (Docker)](#8-run-applications-locally-docker)
+8. [Access the Application](#8-access-the-application)
 9. [Verification Checklist](#9-verification-checklist)
 
 ---
@@ -35,8 +35,7 @@ Complete step-by-step guide to go from a fresh clone to a fully running project 
 
 | Tool | Purpose |
 |------|---------|
-| Docker Desktop | Run apps locally without installing dependencies |
-| Anthropic API key | LLM analysis in the inference app |
+| Gemini API key | « What to do? » generative explanation in the inference app (fallback: rule engine) |
 | Kaggle account + GPU | Re-train the DeBERTa model from scratch |
 
 ### Python packages (load scripts)
@@ -197,7 +196,7 @@ Builds the full medallion pipeline:
 | Layer | Models | Schema |
 |-------|--------|--------|
 | Staging | `stg_issues`, `stg_comments`, `stg_changelog`, `stg_issuelinks` | STAGING |
-| Intermediate | `int_spark_issues`, `int_comments_aggregated`, `int_issuelinks_features`, `int_train_val_split`, `int_issues_analytics`, `int_daily_activity`, `int_fix_versions`, `int_status_transitions` | INTERMEDIATE |
+| Intermediate | `int_issues_cleaned`, `int_comments_aggregated`, `int_changelog_features`, `int_issuelinks_features`, `int_issues_analytics`, `int_daily_activity`, `int_fix_versions`, `int_status_transitions` | INTERMEDIATE |
 | Marts ML | `mart_ml` | MARTS_ML |
 | Marts Analytics | `mart_analytics_ops`, `mart_analytics_workload`, `mart_analytics_links`, `mart_analytics_transitions_sankey`, `mart_analytics_transitions_time`, `mart_analytics_versions`, `mart_analytics_calendar` | MARTS_ANALYTICS |
 
@@ -207,10 +206,11 @@ Builds the full medallion pipeline:
 dbt test
 ```
 
-Expected output: **PASS=44 WARN=2 ERROR=0**
+Expected output (native execution on Snowflake): **PASS=66 WARN=0 ERROR=0**
 
-> The 2 warnings are on `accepted_values` tests for resolution `"Won't Fix"` — the apostrophe
-> triggers a SQL warning in some dbt versions. This is harmless.
+> Run locally, the `accepted_values` test on resolution `"Won't Fix"` may raise 2 warnings (the
+> apostrophe trips the SQL syntax). Executed natively on Snowflake (Workspaces Git integration),
+> all 66 tests pass cleanly.
 
 ---
 
@@ -261,7 +261,7 @@ python migrate_to_snowflake.py
 
 Does three things:
 1. Uploads `spark_parent_keys.csv` → `RAW.SPARK_PARENT_KEYS` (42 083 rows)
-2. Runs `dbt run --select int_spark_issues mart_ml` to rebuild with `has_parent`
+2. Runs `dbt run --select int_issues_cleaned mart_ml` to rebuild with `has_parent`
 3. Verifies `MARTS_ML.MART_ML` row count
 
 ### 6.4 Run the full ML pipeline
@@ -284,7 +284,8 @@ Expected metrics:
 |-------|--------|-------|
 | DeBERTa v3 (issuetype) | Accuracy | 79.6% |
 | DeBERTa v3 (issuetype) | Macro-F1 | 73.63% |
-| LogisticRegression resolution | Accuracy | 91.52% |
+| LogisticRegression resolution | Accuracy | 81.3% |
+| LogisticRegression resolution | Macro-F1 | 26.9% |
 
 ---
 
@@ -319,33 +320,25 @@ Access in Snowsight: **Projects → Notebooks**
 
 ---
 
-## 8. Run Applications Locally (Docker)
+## 8. Access the Application
 
-The simplest way to run both apps without installing all dependencies:
+The platform exposes two consumption channels — both run **inside Snowflake / its ecosystem**, no
+Docker or local server required.
 
-```bash
-# Make sure .env is configured
-docker-compose up --build
-```
+### Inference app — Streamlit-in-Snowflake
 
-| App | URL | Description |
-|-----|-----|-------------|
-| Inference | http://localhost:8501 | DeBERTa ticket classification |
-| Analytics | http://localhost:8502 | 5-page analytics dashboard |
+Deployed in step 7 (`deploy_streamlit_snowflake.py`). Open it in Snowsight:
 
-First build downloads `microsoft/deberta-v3-base` (~370 MB). Subsequent starts are instant.
+**Streamlit → SPARK_TRIAGE_APP**
 
-**Manual launch (without Docker):**
+For each ticket it predicts the issue type (DeBERTa) and the likely resolution (LogisticRegression),
+and generates a « What to do? » explanation via the **Google Gemini API** (set `GEMINI_API_KEY` in
+the Snowflake app secrets / environment; falls back to a deterministic rule engine otherwise).
 
-```bash
-# Inference app
-pip install -r apps/inference/requirements.txt
-streamlit run apps/inference/inference_app.py
+### Analytics dashboard — Power BI
 
-# Analytics dashboard
-pip install -r apps/analytics/requirements.txt
-streamlit run apps/analytics/analytics_app.py
-```
+Open `PB-PFE.pbix` in Power BI Desktop. It connects natively to the `MARTS_ANALYTICS.*` tables in
+Snowflake (`PFE_SPARK`). See the link in the README.
 
 ---
 

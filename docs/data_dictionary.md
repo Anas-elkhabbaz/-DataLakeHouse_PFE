@@ -110,9 +110,15 @@ la contribution technique distinctive du projet.
 | `summary_length` | NUMBER | Longueur en caractères du résumé nettoyé. |
 | `description_length` | NUMBER | Longueur en caractères de la description nettoyée. |
 
+> **Note features ML (résolution) :** le modèle de résolution exploite **17** des caractéristiques
+> tabulaires ci-dessus. Deux colonnes restent présentes dans MART_ML mais sont **exclues du jeu de
+> features** car elles constituent une fuite directe de la cible : `resolution_days` (connu seulement
+> après la clôture) et `n_resolution_changes` (compte les modifications du champ *resolution* lui-même).
+> Le vecteur d'entrée est donc `768 + 17 = 785` dimensions.
+
 ---
 
-## CORTEX.MART_PREDICTIONS
+## PREDICTIONS.MART_PREDICTIONS
 
 Résultats de l'évaluation du pipeline sur le jeu de validation.
 
@@ -136,7 +142,7 @@ Résultats de l'évaluation du pipeline sur le jeu de validation.
 | Cible | Modèle | Accuracy | Macro-F1 |
 |-------|--------|----------|----------|
 | issuetype (4 classes) | DeBERTa-v3-base fine-tuné | **79,6 %** | **73,63 %** |
-| résolution (7 classes) | LogisticRegression (all-mpnet-base-v2) | **91,52 %** | 16,40 % |
+| résolution (7 classes) | LogisticRegression (all-mpnet-base-v2) | **81,3 %** | 26,9 % |
 
 Détail issuetype par classe :
 
@@ -208,7 +214,7 @@ Cache NumPy des embeddings d'entraînement.
 | Taille sur disque | 57 MB |
 | Modèle source | all-MiniLM-L6-v2 (sentence-transformers) |
 
-Chargé par `apps/inference/inference_app.py` et `load/run_ml_pipeline.py`.
+Chargé par `load/run_ml_pipeline.py` et `load/train_save_resolution_model.py`.
 Si absent, recalculé automatiquement (~10 min).
 
 ### Seeds dbt

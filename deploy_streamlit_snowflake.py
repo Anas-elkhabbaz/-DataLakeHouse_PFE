@@ -50,6 +50,14 @@ session.file.put(
 )
 print("  OK")
 
+print("Upload similar_reference_utils.py...")
+session.file.put(
+    str(APP_DIR / "similar_reference_utils.py"),
+    "@PFE_SPARK.ML_MODELS.app_stage/",
+    auto_compress=False, overwrite=True
+)
+print("  OK")
+
 print("Upload environment.yml...")
 session.file.put(
     str(APP_DIR / "environment.yml"),

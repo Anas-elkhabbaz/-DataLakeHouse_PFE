@@ -28,3 +28,13 @@ results/mart_predictions.csv
 results/confusion_matrix_*.csv
 results/evaluation_report.txt
 results/dbt_test_results.txt
+
+# Backups
+*.bak
+results/sklearn_models.bak/
+
+# Stray unzipped DeBERTa artifacts (source = results/deberta_v3_parent.zip)
+results/model.safetensors
+results/config.json
+results/tokenizer.json
+results/tokenizer_config.json

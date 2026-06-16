@@ -12,8 +12,8 @@ et les adaptations apportées lors de l'implémentation réelle par rapport à l
 | Cible | Nature | Modèle | Justification |
 |-------|--------|--------|---------------|
 | `issuetype` | Classification (**4 classes** modèle ML, 9 dans dbt) | DeBERTa-v3-base fine-tuné | Discrimine le type de travail et oriente le routage |
-| `resolution` | Classification (7 classes) | KNN cosinus all-MiniLM-L6-v2 | Prédit l'issue probable, oriente la priorité |
-| Analyse textuelle | Génération (2-3 phrases) | claude-haiku / template | Explication actionnable pour l'ingénieur |
+| `resolution` | Classification (7 classes) | LogisticRegression hybride (all-mpnet-base-v2 + features) | Prédit l'issue probable, oriente la priorité |
+| Analyse textuelle | Génération (2-3 phrases) | API Google Gemini / repli moteur de règles | Explication actionnable pour l'ingénieur |
 
 **Raison :** Correspond à la question métier réelle d'un responsable qualité :
 *Quel type de problème est-ce ? Comment va-t-il être résolu ? Que faut-il faire ?*
@@ -128,8 +128,8 @@ Le fallback Python KNN (`all-MiniLM-L6-v2`, k=15) a été implémenté en premie
 | Cible | Modèle | Justification |
 |-------|--------|---------------|
 | issuetype | `microsoft/deberta-v3-base` fine-tuné (5 epochs, Kaggle Tesla T4) | DeBERTa > KNN : +40pt macro-F1 grâce à la compréhension contextuelle et au signal has_parent |
-| résolution | `LogisticRegression` + `all-mpnet-base-v2` (768d) + 19 features tabulaires | 91,5% accuracy maintenu, pas de régression |
-| Analyse textuelle | `claude-haiku-4-5` Anthropic API (optionnel) ou template | Génère l'explication actionnable pour l'ingénieur |
+| résolution | `LogisticRegression` + `all-mpnet-base-v2` (768d) + 17 features tabulaires (hors `resolution_days`/`n_resolution_changes`, fuite de cible) | 81,3% accuracy (macro-F1 26,9%), au-dessus du seuil de 75% |
+| Analyse textuelle | API **Google Gemini** (`gemini-2.0-flash`, optionnel) avec repli sur moteur de règles | Génère l'explication actionnable « Que faire ? » pour l'ingénieur |
 
 **Chemin de fine-tuning :**
 1. Export `MART_ML` → `mart_ml_export.csv` (Kaggle dataset)
@@ -138,13 +138,14 @@ Le fallback Python KNN (`all-MiniLM-L6-v2`, k=15) a été implémenté en premie
 4. Fine-tuning DeBERTa sur Kaggle (Tesla T4, ~2h) → `deberta_v3_parent/` (599 MB)
 5. Résultats : 79,6% accuracy, 73,63% macro-F1
 
-**Les scripts `cortex/*.sql` sont conservés** et fonctionneront intégralement sur un compte payant.
+Le pipeline Snowflake Cortex (`CORTEX.COMPLETE` / `EMBED_TEXT_1024`) reste l'**implémentation de
+référence** envisageable sur un compte payant, mais n'est pas inclus dans le dépôt (compte d'essai).
 
 ---
 
 ## D-08 : Seuils du gate de confiance
 
-Implémenté dans le vote pondéré de `load/run_ml_pipeline.py` et `apps/inference/inference_app.py` :
+Implémenté dans `load/run_ml_pipeline.py` et l'application `apps/inference/streamlit_in_snowflake.py` :
 
 | Niveau | Seuil confiance | Couleur UI | Comportement |
 |--------|-----------------|------------|--------------|
@@ -175,22 +176,21 @@ retourne NULL plutôt qu'une erreur.
 `results/embeddings_cache.npz` (57 MB). Le fichier est versionné dans git.
 
 **Raison :** Le calcul des embeddings pour 38 274 tickets prend ~10 min sur CPU. Versionner
-le cache permet à tout collaborateur (ou container Docker) de démarrer l'application d'inférence
+le cache permet à tout collaborateur (ou à l'application déployée) de démarrer l'inférence
 instantanément sans recalcul. La taille (57 MB) est sous la limite hard de GitHub (100 MB).
 
 ---
 
-## D-11 : Architecture Docker
+## D-11 : Déploiement — Streamlit-in-Snowflake (pas de Docker)
 
-**Décision :** Deux Dockerfiles séparés (un par application) orchestrés via docker-compose.
+**Décision :** L'application d'inférence est déployée **nativement dans Snowflake**
+(Streamlit-in-Snowflake) via `deploy_streamlit_snowflake.py`, et non plus dans des conteneurs Docker.
+L'analytique est servie par **Power BI** connecté nativement à `MARTS_ANALYTICS.*`.
 
-| Service | Image de base | Particularité |
-|---------|---------------|---------------|
-| spark-inference | python:3.12-slim | Pré-charge all-MiniLM-L6-v2 dans le build, copie embeddings_cache.npz |
-| spark-analytics | python:3.12-slim | Image légère, pas de modèle ML |
-
-**Raison :** Séparer les deux apps permet de les rebuilder indépendamment.
-Le pré-chargement du modèle dans le build évite tout téléchargement au démarrage du container.
+**Raison :** Exécuter l'app au sein de l'entrepôt place le calcul au plus près des données et des
+modèles (sklearn + DeBERTa déployés dans le stage `ML_MODELS.APP_STAGE`), supprime la dépendance à
+une infrastructure de conteneurs externe, et garantit un déploiement reproductible dans Snowflake.
+Une ancienne variante Docker (deux apps Streamlit) a été retirée au profit de cette approche.
 
 ---
 
