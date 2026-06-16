@@ -61,15 +61,24 @@ print("Creation notebook sklearn_resolution_training.ipynb...")
 
 cells_sklearn = [
     make_md_cell([
-        "# PFE Spark — Entraînement sklearn dans Snowflake\n",
-        "Entraîne un `LogisticRegression` pour prédire la **résolution** des tickets Apache Spark.\n",
-        "Lit directement depuis `MARTS_ML.MART_ML` (42 083 tickets, features tabulaires + `has_parent`).\n",
-        "Sauvegarde le modèle dans le **Snowflake Model Registry**.",
+        "# PFE Spark — Entraînement de la résolution (modèle hybride)\n",
+        "\n",
+        "Entraîne la **régression logistique hybride** décrite dans le rapport pour prédire la **résolution** des tickets Apache Spark.\n",
+        "\n",
+        "Approche : embeddings sémantiques `all-mpnet-base-v2` (768 d) sur `text_for_res`, **concaténés** aux caractéristiques tabulaires de `MARTS_ML.MART_ML`, puis `LogisticRegression(class_weight='balanced', C=3.0)`.\n",
+        "\n",
+        "Ce notebook est l'équivalent reproductible de `load/train_save_resolution_model.py` (qui produit le `.pkl` déployé et `results/evaluation_report.txt`).",
+    ]),
+    make_md_cell([
+        "> **Note de cohérence rapport ↔ code (17 vs 19 features).**\n",
+        "> Ce notebook entraîne le modèle **tel qu'il a réellement tourné** : embeddings (768 d) + **19** caractéristiques tabulaires (incluant `resolution_days` et `n_resolution_changes`), soit un vecteur de 787 dimensions, d'où les métriques **81,3 % d'accuracy / 26,9 % de macro-F1**.\n",
+        "> Le **rapport documente 17 caractéristiques** : il exclut volontairement de la *spécification* ces deux variables, identifiées comme une **fuite directe de la cible** (jamais disponibles au triage d'un nouveau ticket). L'écart 17 (rapport) vs 19 (code) est donc **assumé et documenté** ; un ré-entraînement strict à 17 features constitue l'étape suivante si l'on souhaite des métriques 17-features.",
     ]),
     make_code_cell([
         "import pandas as pd\n",
         "import numpy as np\n",
         "from snowflake.snowpark.context import get_active_session\n",
+        "from sentence_transformers import SentenceTransformer  # ajouter 'sentence-transformers' aux packages du notebook\n",
         "from sklearn.linear_model import LogisticRegression\n",
         "from sklearn.preprocessing import StandardScaler\n",
         "from sklearn.metrics import f1_score, classification_report\n",
@@ -78,8 +87,11 @@ cells_sklearn = [
         "session = get_active_session()\n",
         "print('Session Snowflake active :', session.get_current_database())",
     ]),
-    make_md_cell("## 1. Chargement de MART_ML"),
+    make_md_cell("## 1. Chargement de MART_ML (texte + 19 features tabulaires)"),
     make_code_cell([
+        "# 19 caractéristiques tabulaires (telles qu'utilisées par train_save_resolution_model.py).\n",
+        "# resolution_days et n_resolution_changes sont incluses ici (modèle tel qu'il a tourné) ;\n",
+        "# le rapport documente les 17 features hors fuite de cible — voir note ci-dessus.\n",
         "TABULAR_FEATURES = [\n",
         "    'n_total_changes', 'n_status_changes', 'n_priority_changes',\n",
         "    'n_assignee_changes', 'n_resolution_changes', 'was_escalated',\n",
@@ -91,45 +103,54 @@ cells_sklearn = [
         "feat_str = ', '.join(TABULAR_FEATURES)\n",
         "\n",
         "df = session.sql(f\"\"\"\n",
-        "    SELECT key, split, issuetype, resolution, {feat_str}\n",
+        "    SELECT key, split, issuetype, resolution, text_for_res, {feat_str}\n",
         "    FROM PFE_SPARK.MARTS_ML.MART_ML\n",
         "    WHERE split IN ('train', 'validation')\n",
         "    ORDER BY key\n",
         "\"\"\").to_pandas()\n",
         "df.columns = [c.lower() for c in df.columns]\n",
         "print(f'Chargé {len(df):,} tickets')\n",
-        "print(df[['split','issuetype','resolution']].value_counts('split'))",
+        "print(df['split'].value_counts())",
     ]),
-    make_md_cell("## 2. Préparation des features"),
+    make_md_cell("## 2. Branche textuelle — embeddings all-mpnet-base-v2 (768 d)"),
     make_code_cell([
-        "RARE = {'Task', 'Documentation', 'Test', 'Question'}\n",
-        "df['issuetype'] = df['issuetype'].apply(lambda x: 'Other' if x in RARE else x)\n",
+        "train = df[df['split'] == 'train'].reset_index(drop=True)\n",
+        "val   = df[df['split'] == 'validation'].reset_index(drop=True)\n",
         "\n",
-        "train = df[df['split']=='train'].reset_index(drop=True)\n",
-        "val   = df[df['split']=='validation'].reset_index(drop=True)\n",
+        "model = SentenceTransformer('all-mpnet-base-v2')\n",
         "\n",
-        "scaler    = StandardScaler()\n",
-        "train_tab = scaler.fit_transform(train[TABULAR_FEATURES].fillna(0))\n",
-        "val_tab   = scaler.transform(val[TABULAR_FEATURES].fillna(0))\n",
+        "def embed(texts):\n",
+        "    return model.encode(texts, batch_size=256, show_progress_bar=True,\n",
+        "                        normalize_embeddings=True)\n",
         "\n",
-        "print(f'Train: {len(train):,}  Val: {len(val):,}')\n",
-        "print('Distribution resolution (train):')\n",
-        "print(train['resolution'].value_counts())",
+        "train_emb_res = embed(train['text_for_res'].fillna('').tolist())\n",
+        "val_emb_res   = embed(val['text_for_res'].fillna('').tolist())\n",
+        "print('Embeddings :', train_emb_res.shape, val_emb_res.shape)",
     ]),
-    make_md_cell("## 3. Entraînement LogisticRegression (résolution)"),
+    make_md_cell("## 3. Branche tabulaire + concaténation (vecteur 768 + 19 = 787 d)"),
+    make_code_cell([
+        "scaler    = StandardScaler()\n",
+        "train_tab = scaler.fit_transform(train[TABULAR_FEATURES].fillna(0).clip(upper=1e6))\n",
+        "val_tab   = scaler.transform(val[TABULAR_FEATURES].fillna(0).clip(upper=1e6))\n",
+        "\n",
+        "X_train_res = np.hstack([train_emb_res, train_tab])\n",
+        "X_val_res   = np.hstack([val_emb_res,   val_tab])\n",
+        "print('X_train_res :', X_train_res.shape, '| X_val_res :', X_val_res.shape)",
+    ]),
+    make_md_cell("## 4. Entraînement LogisticRegression (résolution)"),
     make_code_cell([
         "clf_res = LogisticRegression(\n",
-        "    class_weight='balanced', max_iter=1000, C=3.0, n_jobs=-1\n",
+        "    class_weight='balanced', max_iter=1000, C=3.0, solver='lbfgs', n_jobs=-1\n",
         ")\n",
-        "clf_res.fit(train_tab, train['resolution'])\n",
+        "clf_res.fit(X_train_res, train['resolution'])\n",
         "\n",
-        "pred = clf_res.predict(val_tab)\n",
+        "pred = clf_res.predict(X_val_res)\n",
         "f1   = f1_score(val['resolution'], pred, average='macro', zero_division=0)\n",
         "acc  = (pred == val['resolution'].values).mean()\n",
-        "print(f'Resolution — macro-F1={f1:.4f}  accuracy={acc:.4f}')\n",
+        "print(f'Résolution — accuracy={acc:.4f}  macro-F1={f1:.4f}')\n",
         "print(classification_report(val['resolution'], pred, zero_division=0))",
     ]),
-    make_md_cell("## 4. Sauvegarde dans le Model Registry"),
+    make_md_cell("## 5. Sauvegarde dans le Snowflake Model Registry"),
     make_code_cell([
         "from snowflake.ml.registry import Registry\n",
         "\n",
@@ -137,12 +158,11 @@ cells_sklearn = [
         "reg.log_model(\n",
         "    clf_res,\n",
         "    model_name='resolution_classifier',\n",
-        "    version_name='v1_tabular_has_parent',\n",
+        "    version_name='v2_hybrid_mpnet_768_plus_19',\n",
         "    conda_dependencies=['scikit-learn', 'pandas', 'numpy'],\n",
-        "    comment=f'LR balanced, tabular only + has_parent. macro-F1={f1:.4f}'\n",
+        "    comment=f'LR balanced C=3.0, embeddings all-mpnet-base-v2 (768d) + 19 features tabulaires. accuracy={acc:.4f} macro-F1={f1:.4f}'\n",
         ")\n",
-        "print('Modèle sauvegardé dans Model Registry !')\n",
-        "print('Accessible via : SELECT * FROM SNOWFLAKE.ML.MODELS;')",
+        "print('Modèle hybride sauvegardé dans le Model Registry.')",
     ]),
 ]
 
@@ -157,8 +177,11 @@ print("Preparation notebook deberta_fine_tuning_v3.ipynb...")
 if KAGGLE_NB.exists():
     import shutil
     deberta_path = NB_OUT_DIR / "deberta_fine_tuning_v3.ipynb"
-    shutil.copy2(KAGGLE_NB, deberta_path)
-    print(f"  Copié : {deberta_path}")
+    if KAGGLE_NB.resolve() != deberta_path.resolve():
+        shutil.copy2(KAGGLE_NB, deberta_path)
+        print(f"  Copié : {deberta_path}")
+    else:
+        print(f"  Déjà en place : {deberta_path}")
 else:
     print(f"  ATTENTION : {KAGGLE_NB} introuvable, skip.")
     deberta_path = None
